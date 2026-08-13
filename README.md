@@ -108,27 +108,12 @@ Send the following links to **icts@gsu.ac.zw**:
 
 > **Candidate — replace this section with your own step-by-step plan.**
 
-Suggested template:
+Suggested template eg:
 
 1. **Audit** — enumerate every public method in the controller and record
    its responsibility.
-2. **Group** — cluster methods by responsibility (for example: transcript
-   generation, mark computation, PDF export, reporting).
-3. **Extract services** — for each group, create a service class under
-   `app/Services/Results/` and move the business logic there.
-4. **Extract repositories** — move Eloquent queries into repository classes
-   under `app/Repositories/Results/`.
-5. **Form requests** — replace inline validation with dedicated Form
-   Request classes under `app/Http/Requests/Results/`.
-6. **API resources / view models** — replace ad-hoc arrays with API
-   Resources or dedicated View Models.
-7. **Split the controller** — replace the single controller with several
-   thinner controllers, each with a small, well-named set of actions.
-8. **Queues and jobs** — move slow, batch or export-style operations into
-   queued jobs.
-9. **Tests** — add feature tests for the endpoints and unit tests for the
-   extracted services.
-10. **Documentation** — update PHPDoc blocks and this README as the
+
+2. **Documentation** — update PHPDoc blocks and this README as the
     refactor progresses.
 
 ---
