@@ -42,17 +42,7 @@ Read the file carefully and, in your pull request description, explain:
 - **What is wrong with the file** in its current form (for example: length,
   mixed responsibilities, business logic inside the controller, 
 - **How the file can be made modular**, referencing concrete Laravel
-  patterns and SOLID principles, for example:
-  - Extracting business logic into **Service** classes.
-  - Extracting data access into **Repository** classes or dedicated
-    **Eloquent scopes**.
-  - Moving validation into **Form Request** classes.
-  - Shaping responses through **API Resources** or **View Models**.
-  - Moving long-running work into **Jobs** and **Queues**.
-  - Using **Traits**, **Interfaces** and **Dependency Injection**.
-  - Splitting the controller into several thinner controllers grouped by
-    responsibility (for example, one per report or per action).
-  - Adding **feature** and **unit tests** for the extracted classes.
+  patterns
 
 ### 2. Raise a Pull Request
 
