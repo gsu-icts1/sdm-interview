@@ -40,9 +40,7 @@ the following tasks and share the deliverables with **icts@gsu.ac.zw**.
 Read the file carefully and, in your pull request description, explain:
 
 - **What is wrong with the file** in its current form (for example: length,
-  mixed responsibilities, business logic inside the controller, repeated
-  code, tight coupling to the database, hard-coded values, lack of tests,
-  poor error handling, security concerns, N+1 queries).
+  mixed responsibilities, business logic inside the controller, 
 - **How the file can be made modular**, referencing concrete Laravel
   patterns and SOLID principles, for example:
   - Extracting business logic into **Service** classes.
