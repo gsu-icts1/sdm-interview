@@ -33,7 +33,7 @@ database and producing an entity-relationship diagram.
 ## Your task
 
 You have been given a snapshot of a running Laravel application. Complete
-the following tasks and share the deliverables with **icts@gsu.ac.zw**.
+the following tasks and share the deliverables with **icts.director@gsu.ac.zw and deputyregistrarhr@gsu.ac.zw**.
 
 ### 1. Review `ResultsPresentationController.php`
 
@@ -96,7 +96,7 @@ card include:
 
 ### 6. Share the artefacts
 
-Send the following links to **icts@gsu.ac.zw**:
+Send the following links to **icts.director@gsu.ac.zw and deputyregistrarhr@gsu.ac.zw**:
 
 1. The URL of your fork of the repository.
 2. The URL of the pull request.
@@ -152,4 +152,4 @@ in `pengindb.sql` and show the relationships between these three tables
 ## Contact
 
 For any queries about this assessment please contact
-**icts@gsu.ac.zw**.
+**icts.director@gsu.ac.zw and deputyregistrarhr@gsu.ac.zw**.
