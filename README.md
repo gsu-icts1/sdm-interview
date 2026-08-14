@@ -129,7 +129,7 @@ Suggested template eg:
 | `studentprogrammestatus` | The status of the student on their programme (active, deferred, discontinued, completed, etc.). |
 
 The ER diagram in `diagrams/` must reflect the actual structure declared
-in `db.sql` and show the relationships between these three tables
+in `pengindb.sql` and show the relationships between these three tables
 (typically `studentmember` 1 &mdash; * `tbl_registered_module` and
 `studentmember` 1 &mdash; * `studentprogrammestatus`).
 
