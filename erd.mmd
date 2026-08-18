@@ -1,0 +1,56 @@
+---
+title: GSU pengindb — Student Records ERD (Q7)
+---
+erDiagram
+    STUDENTMEMBER ||--o{ STUDENTPROGRAMMESTATUS : "has status history (studentNumber)"
+    STUDENTMEMBER ||--o{ TBLREGISTERED_MODULE : "registers modules (studentNumber)"
+
+    STUDENTMEMBER {
+        bigint id PK "AUTO_INCREMENT"
+        varchar(20) studentNumber UK "unique - referenced by children"
+        varchar(50) applicationNumber UK
+        varchar(20) nationalId UK
+        varchar(12) programmeCode "implied FK to programme table (not in extract)"
+        varchar(100) firstName
+        varchar(100) lastName
+        varchar(10) sex
+        date dateBirth
+        varchar(30) mobileNumber
+        varchar(150) email
+        varchar(20) status
+        varchar(20) campus
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at "soft delete"
+    }
+
+    STUDENTPROGRAMMESTATUS {
+        bigint id PK "AUTO_INCREMENT"
+        varchar(20) studentNumber FK "-> studentmember.studentNumber"
+        varchar(12) programmeCode
+        varchar(4) yearOfStudy
+        varchar(4) semesterOfStudy
+        varchar(4) year
+        varchar(10) session
+        varchar(30) status "registered/exempted/defer/graduated"
+        varchar(20) recordStatus "Old/current/previous"
+        varchar(20) regType "online/manual"
+        tinyint periodCycle
+        varchar(20) format "con/para/block"
+        varchar(255) remarks
+        timestamp deleted_at "soft delete"
+    }
+
+    TBLREGISTERED_MODULE {
+        bigint id PK "AUTO_INCREMENT"
+        varchar(20) studentNumber FK "-> studentmember.studentNumber"
+        varchar(12) programmeCode
+        varchar(30) moduleCode "implied FK to module table (not in extract)"
+        varchar(4) yearOfStudy
+        varchar(4) semesterOfStudy
+        varchar(15) session
+        bigint seatingIdFk "implied FK to exam seating table (not in extract)"
+        tinyint is_approved
+        int is_supplement
+        timestamp deleted_at "soft delete"
+    }
