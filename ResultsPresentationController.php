@@ -29,52 +29,26 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Contracts\Encryption\DecryptException;
 
 
 class ResultsPresentationController extends Controller
 {
-    private const PASS_MARK = 49.5;
-
-    private function decryptRouteValue(string $value): mixed
-    {
-        try {
-            return Crypt::decrypt($value);
-        } catch (DecryptException $exception) {
-            ErrorLogEvent::dispatch($exception);
-            abort(404);
-        }
-    }
-
-    private function examStages(): array
-    {
-        if (Gate::allows('is-registrar')) {
-            return [3, null, null];
-        }
-
-        if (Gate::allows('is-dean')) {
-            return [1, 2, 3];
-        }
-
-        if (Gate::allows('is-chairperson-alone')) {
-            return [1, 2, 3];
-        }
-
-        return [null, null, null];
-    }
 
     public function filter_results($state, $academic){
-        $state = $this->decryptRouteValue($state);
+        //try{
+            $state = decrypt($state);
 
-        try {
             $department_id = StaffMember::where('national_id_number', Auth::user()->national_id_number)->first();
 
             $programmes = "";
             $academic_session = U1AcademicSession::has('exam_session')->where('status', 'Active')->get();
+           // dd($academic_session->exam_session->id);
+            //dd($department_id);
             if(Gate::allows('is-dean') ){
                 //
                 $departments = AdminStructure::where('parent_id', $department_id->admin_structure_fk_id)->pluck('id')->push($department_id->admin_structure_fk_id);
                 $programmes = ProgrammeDefinition::where('status','active')->whereIn('adminStructCode', $departments)->get();
+                //  dd($programmes);
 
             }elseif (Gate::allows('is-registrar')){
                 $programmes = ProgrammeDefinition::where('status','active')->get();
@@ -86,17 +60,39 @@ class ResultsPresentationController extends Controller
 
 
             return view('exams_management.chairperson.student_marks_profile_report',compact('programmes','academic_session', 'academic', 'state'));
-        } catch (\Throwable $exception) {
-            ErrorLogEvent::dispatch($exception);
-            return redirect()->back()->with('toast_error', 'Unable to load results. Please try again.');
-        }
+        // }catch (\Exception $exception){
+        //     dd($exception->getMessage());
+        //     ErrorLogEvent::dispatch($exception);
+        //     return redirect()->back()->with('toast_error', 'Something went wrong');
+        // }
     }
 
     private function generate_html_view( $programme_code, $year_of_study, $semester_of_study, $exam_session_id,$exam_type, $state, $academic, $blade_viev){
        // try {
 
+            //dd($exam_type);
             $session = ExamSession::find($exam_session_id)->academic_session->academic_session_name;
-            [$exam_stage_1, $exam_stage_2, $exam_stage_3] = $this->examStages();
+            $exam_stage_1 =null; $exam_stage_2=null; $exam_stage_3=null;
+            if(Gate::allows('is-registrar')){
+                $exam_stage_1 = 3;
+
+                //view if its 3 only
+            }
+
+            if(Gate::allows('is-dean')){
+                $exam_stage_1 = 1;
+                $exam_stage_1 = 2;
+                $exam_stage_3 = 3;
+
+                // view if its is 1,2,3
+            }
+
+            if(Gate::allows('is-chairperson-alone')){
+                $exam_stage_1 = 1;
+                $exam_stage_2 = 2;
+                $exam_stage_3 = 3;
+                //view if is 1,2 and 3
+            }
 
             if($semester_of_study == 2 && $blade_viev){
             $students = DB::table('tblexam_marks')
@@ -131,24 +127,23 @@ class ResultsPresentationController extends Controller
                     'tblexam_marks.semester_of_study',
                     'tblexam_marks.exam_session_id'
                 )
-                ->where(function ($query) use ($programme_code, $year_of_study, $semester_of_study, $exam_session_id, $exam_type) {
-                    $query->where([
-                        'tblexam_marks.programme_code' => $programme_code,
-                        'tblexam_marks.year_of_study' => $year_of_study,
-                        'tblexam_marks.exam_type' => $exam_type,
-                        'tblexam_marks.semester_of_study' => $semester_of_study,
-                        'tblexam_marks.exam_session_id' => $exam_session_id,
-                    ])->orWhere(function ($previousSemester) use ($programme_code, $exam_session_id, $year_of_study, $exam_type) {
-                        $previousSemester->where('tblexam_marks.programme_code', $programme_code)
-                            ->where('tblexam_marks.year_of_study', $year_of_study)
-                            ->where('tblexam_marks.exam_type', $exam_type)
-                            ->where('tblexam_marks.semester_of_study', 1)
-                            ->where('tblexam_marks.exam_session_id', $exam_session_id - 1);
-                    });
+                ->where([
+                    'tblexam_marks.programme_code' => $programme_code,
+                    'tblexam_marks.year_of_study' => $year_of_study,
+                    'exam_type' => $exam_type,
+                    'tblexam_marks.semester_of_study' => $semester_of_study,
+                    'tblexam_marks.exam_session_id' => $exam_session_id
+                ])
+                ->orWhere(function ($query) use ($programme_code, $exam_session_id, $year_of_study) {
+                    $query->where('tblexam_marks.programme_code', $programme_code,)
+                          ->where('tblexam_marks.semester_of_study', 1)
+                          ->where('tblexam_marks.exam_session_id', $exam_session_id - 1)
+                          ->where('tblexam_marks.year_of_study', $year_of_study);
                 })
 
                ->orderBy('tblexam_marks.semester_of_study')
                ->orderBy('tblexam_marks.publish_status', 'desc')
+               ->orderBy('tblexam_marks.semester_of_study')
                ->orderBy('tblexam_marks.module_code')
                 ->orderBy('studentmember.studentNumber')
                 ->get();
@@ -197,6 +192,7 @@ class ResultsPresentationController extends Controller
                 // ->orderBy('lastName')
                 ->orderBy('tblexam_marks.semester_of_study')
                ->orderBy('tblexam_marks.publish_status', 'desc')
+               ->orderBy('tblexam_marks.semester_of_study')
                ->orderBy('tblexam_marks.module_code')
                 ->orderBy('studentmember.studentNumber')
                 ->get();
@@ -372,6 +368,10 @@ class ResultsPresentationController extends Controller
             $htmlTable .= '</table>';
 
             return  $htmlTable;
+        // }catch (\Exception $exception){
+        //     dd($exception->getMessage());
+        //        return  redirect()->back()->with('toast_error', 'Something went wrong');
+        // }
     }
 
     private function pendingFailed($studentmember, $remark)
@@ -392,9 +392,10 @@ class ResultsPresentationController extends Controller
 
     private function owedModules($studentmember)
     {
-        $failed = collect(ExamMark::where('student_number',$studentmember)->where('overall_mark', '<', self::PASS_MARK)->pluck('module_code'));
+        $failed = collect(ExamMark::where('student_number',$studentmember)->where('overall_mark', '<', 49.5)->pluck('module_code'));
        $cleaned = array();
-        $passed = collect(ExamMark::where('student_number', $studentmember)->where('overall_mark', '>=', self::PASS_MARK)->pluck('module_code'))->toArray();
+      // dd($cleaned);
+        $passed =  collect(ExamMark::where('student_number',$studentmember)->where('overall_mark', '>', 49.5)->pluck('module_code'))->toArray();
         if($failed->count()){
             $cleaned =  array_diff($failed->toArray(), $passed);
         }
@@ -402,28 +403,39 @@ class ResultsPresentationController extends Controller
 
     }
 
-    public function results_presentation(Request $request)
+    public function results_presentation()
     {
-        $validated = $request->validate([
-            'programme_code' => ['required', 'string'],
-            'year_of_study' => ['required', 'integer', 'min:1'],
-            'semester_of_study' => ['required', 'integer', 'between:1,2'],
-            'exam_session_id' => ['required', 'string'],
-            'exam_type' => ['nullable', 'string', 'max:100'],
-            'state' => ['required', 'integer'],
-            'academic' => ['required', 'integer'],
-        ]);
-
-        $programme_code = $this->decryptRouteValue($validated['programme_code']);
-        $year_of_study = $validated['year_of_study'];
-        $semester_of_study = $validated['semester_of_study'];
-        $exam_session_id = $this->decryptRouteValue($validated['exam_session_id']);
+        $programme_code = decrypt($_GET['programme_code']);
+        $year_of_study = $_GET['year_of_study'];
+        $semester_of_study = $_GET['semester_of_study'];
+        $exam_session_id = decrypt($_GET['exam_session_id']);
         $semester_one_profile = null;
-        $exam_type = $validated['exam_type'] ?? null;
-        $state = $validated['state'];
-        $academic = $validated['academic'];
+        $exam_type = $_GET['exam_type'] ?? null;
+        $state = $_GET['state'];
+        $academic = $_GET['academic'];
+        //dd($exam_session_id);
         $sessionname = ExamSession::find($exam_session_id)->academic_session->academic_session_name;
-        [$exam_stage_1, $exam_stage_2, $exam_stage_3] = $this->examStages();
+// dd($sessionname);
+        if(Gate::allows('is-registrar')){
+            $exam_stage_1 = 3;
+
+            //view if its 3 only
+        }
+
+        if(Gate::allows('is-dean')){
+            $exam_stage_1 = 2;
+            $exam_stage_3 = 3;
+
+            // view if its s,,3
+        }
+
+        if(Gate::allows('is-chairperson-alone')){
+            $exam_stage_1 = 1;
+            $exam_stage_2 = 2;
+            $exam_stage_3 = 3;
+
+            //view if is 1,2 and 3
+        }
         //try {
 
             // Set CSS styles for the table
@@ -473,9 +485,11 @@ class ResultsPresentationController extends Controller
                                         ->where(['year_of_study'=>$year_of_study,'semester_of_study'=>$semester_of_study])
 
                                         ->pluck('student_number');
+                //dd($all);
             $totalStudents = StudentProgrammeStatus::where(['programmeCode'=>$programme_code,'session'=>$sessionname,'status'=>'REGISTERED','yearOfStudy'=>$year_of_study,'semesterOfStudy'=>$semester_of_study,'recordStatus'=>'CURRENT'])
                 ->count();
                 //->pluck('studentNumber');
+                //dd($totalStudents);
 
             $exam_marks = ExamMark::where(['programme_code'=>$programme_code,'year_of_study'=>$year_of_study,
                 'semester_of_study'=>$semester_of_study,'exam_session_id'=>$exam_session_id,'exam_type'=>$exam_type])//'exam_marks_stage'=>1,'exam_type'=>$exam_type
@@ -483,6 +497,7 @@ class ResultsPresentationController extends Controller
                     $query->where(['programmeCode'=>$programme_code,'yearOfStudy'=>$year_of_study,'semesterOfStudy'=>$semester_of_study,'recordStatus'=>'CURRENT']);
                 })->get();
 
+          // dd($exam_marks);
 
             $passing = StudentPartRemark::whereIn('student_number', $total_students)
                                         ->where(['year_of_study'=>$year_of_study,'semester_of_study'=>$semester_of_study])
@@ -621,6 +636,9 @@ class ResultsPresentationController extends Controller
             // Signatories section
                 $session = ExamSession::has('academic_session')->where('id','=',$exam_session_id)->first();
 //                if($session->academic_session)
+//                dd($session->academic_session->academic_session_name);
+
+// dd(77);
             return View::make('exams_management.chairperson.results_presentation_web',
                         [   'htmlTable' => $htmlTable,
                             'programme_name'=>$programme_name,
@@ -642,16 +660,19 @@ class ResultsPresentationController extends Controller
                             'state' =>$state,
                             'academic' =>$academic
                         ]);
+        // } catch (\Exception $exception) {
+        //     dd($exception->getMessage());
+        // }
     }
 
 
     public function generate_pdf(Request $request, $programme_code, $year_of_study,$semester_of_study,$exam_session_id,$exam_type, $state){
-        $programme_code = $this->decryptRouteValue($programme_code);
-        $year_of_study = $this->decryptRouteValue($year_of_study);
-        $semester_of_study = $this->decryptRouteValue($semester_of_study);
-        $exam_session_id = $this->decryptRouteValue($exam_session_id);
-        $exam_type = isset($exam_type) ? $this->decryptRouteValue($exam_type) : null;
-        $state = $this->decryptRouteValue($state);
+        $programme_code = decrypt($programme_code);
+        $year_of_study = decrypt($year_of_study);
+        $semester_of_study = decrypt($semester_of_study);
+        $exam_session_id = decrypt($exam_session_id);
+        $exam_type = isset($exam_type) ? decrypt($exam_type) : null;
+         $state = decrypt($state);
          $academic = 0;
 
 
@@ -843,32 +864,23 @@ class ResultsPresentationController extends Controller
 
 
 
-        } catch (\Throwable $exception) {
-            ErrorLogEvent::dispatch($exception);
-            return redirect()->back()->with('toast_error', 'Unable to generate the PDF. Please try again.');
+        }catch (\Exception $exception){
+//dd($exception->getMessage());
         }
     }
 
-    public function results_summary_remark(Request $request){
-            $validated = $request->validate([
-                'programme_code' => ['required', 'string'],
-                'year_of_study' => ['required', 'integer', 'min:1'],
-                'semester_of_study' => ['required', 'integer', 'between:1,2'],
-                'session' => ['required', 'string', 'max:100'],
-                'remark' => ['required', 'string', 'max:255'],
-                'state' => ['required', 'integer'],
-            ]);
-
-            $programme_code = $this->decryptRouteValue($validated['programme_code']);
-            $year_of_study = $validated['year_of_study'];
-            $semester_of_study = $validated['semester_of_study'];
-            $session = $validated['session'];
-            $remark = $validated['remark'];
-            $state = $validated['state'];
+    public function results_summary_remark(){
+            $programme_code = decrypt($_GET['programme_code']);
+            $year_of_study = $_GET['year_of_study'];
+            $semester_of_study = $_GET['semester_of_study'];
+            $session = $_GET['session'];
+            $remark = $_GET['remark'];
+            $state = $_GET['state'];
             $academic = 1;
         try {
             $student_numbers = $this->results_summary_drill_down($year_of_study,$semester_of_study,$session,$programme_code,$remark);
             $exam_session_id = U1AcademicSession::has('exam_session')->where('academic_session_name','=', $session)->first();
+            //dd();
             $students = DB::table('tblexam_marks')
                 ->leftJoin('tbl_student_part_aggregate', 'tblexam_marks.student_number', '=', 'tbl_student_part_aggregate.student_number')
                 ->leftJoin('tbl_student_part_remark', function ($join) use ($year_of_study, $semester_of_study) {
@@ -1018,9 +1030,8 @@ class ResultsPresentationController extends Controller
                     'academic' =>$academic
                 ]);
 
-        } catch (\Throwable $exception) {
-            ErrorLogEvent::dispatch($exception);
-            return redirect()->back()->with('toast_error', 'Unable to load the results summary. Please try again.');
+        }catch (\Exception $exception){
+            dd($exception->getMessage());
         }
     }
     private function carry_over_students($exam_session_id, $programme_code, $year_of_study, $semester_of_study)
@@ -1173,11 +1184,15 @@ class ResultsPresentationController extends Controller
             return $htmlTable;
 
 
+//         }catch (\Exception $exception){
+// dd($exception->getMessage());
+//         }
     }
     /**
      * @throws \Exception
      */
     private function results_summary_drill_down($year_of_study, $semester_of_study, $session, $programme_code, $remark=null){
+        //$year_of_study = $_GET['year']
         try {
             if ($remark == 'PASS'){
                 return StudentPartRemark::where(['year_of_study'=>$year_of_study, 'semester_of_study'=>$semester_of_study,
@@ -1193,9 +1208,9 @@ class ResultsPresentationController extends Controller
                     'session'=>$session,'programme_code'=>$programme_code])->where('remark','LIKE', '%'. $remark . '%')->pluck('student_number');
             }
 
-        } catch (\Throwable $exception) {
-            ErrorLogEvent::dispatch($exception);
-            throw $exception;
+        }catch (\Exception $exception){
+            dd($exception->getMessage());
+                throw  new \Exception( $exception->getMessage());
         }
     }
 }
