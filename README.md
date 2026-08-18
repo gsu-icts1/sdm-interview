@@ -4,152 +4,62 @@
 > Software Development Manager Pre-Interview (Section B, Question 7)
 
 This repository is a **snapshot of a running Laravel application** used at
-Gwanda State University. It has been prepared as a practical, hands-on
-exercise for candidates who are being assessed for the position of
-**Software Development Manager**.
-
-The candidate is **not** expected to run the full Laravel application. What
-is required is a working developer workflow: reading real code, opening a
-pull request, updating documentation, modelling a small piece of the
-database and producing an entity-relationship diagram.
-
----
+Gwanda State University (marks management / results presentation module of
+the `pengindb` system). It is **not runnable on its own** — it contains a
+single production controller, a structure-only database extract and this
+documentation. It exists so the candidate can demonstrate a full developer
+workflow: code review, pull request, documentation, database modelling and
+work coordination through Trello.
 
 ## What is in this repository
 
 | Item | Description |
 |------|-------------|
-| `ResultsPresentationController.php` | A snapshot of a single Laravel controller (over 1 200 lines) taken from the running production application. This is the file to review and refactor. |
-| `db.sql` | A database extract that contains the **structure** of three tables — `studentmember`, `tbl_registered_module` and `studentprogrammestatus`. Use this file as the source of truth when building the ER diagram. |
-| `diagrams/` | Location for the Entity-Relationship Diagram (ERD) that the candidate must produce and upload. |
+| `ResultsPresentationController.php` | Snapshot of a 1,216-line production controller — the subject of the code review and refactor plan. |
+| `pengindb.sql` | Structure-only extract of `studentmember`, `studentprogrammestatus` and `tblregistered_module` (source of truth for the ERD). |
+| `pengindb_structure.sql` | **Candidate-added:** cleaned structure with primary keys, foreign keys, corrected data types and indexes. Assumptions documented in the file header. |
+| `diagrams/erd.png`, `diagrams/erd.mmd` | **Candidate-added:** Entity-Relationship Diagram (image + Mermaid source). |
 | `README.md` | This file. |
-
-> The controller (`ResultsPresentationController.php`) and the database
-> extract (`pengindb.sql`) are uploaded by the panel. The candidate is
-> expected to add, edit and commit everything else.
-
----
-
-## Your task
-
-You have been given a snapshot of a running Laravel application. Complete
-the following tasks and share the deliverables with **icts.director@gsu.ac.zw and deputyregistrarhr@gsu.ac.zw**.
-
-### 1. Review `ResultsPresentationController.php`
-
-Read the file carefully and, in your pull request description, explain:
-
-- **What is wrong with the file** in its current form (for example: length,
-  mixed responsibilities, business logic inside the controller, 
-- **How the file can be made modular**, referencing concrete Laravel
-  patterns
-
-### 2. Raise a Pull Request
-
-- Fork or clone the repository.
-- Create a working branch (for example `refactor/results-presentation`).
-- Commit a short, focused change (a stubbed refactor is acceptable — the
-  panel is more interested in your **plan** and **PR description** than in
-  a full rewrite).
-- Open a pull request against the `main` branch of this repository.
-- Use the PR description to document the review findings and the proposed
-  refactor plan.
-
-### 3. Update this README
-
-Replace the section below (**"Refactor plan"**) with a structured,
-step-by-step list of what needs to be done on the controller and on the
-codebase generally.
-
-### 4. Update the Trello board
-
-Create Trello cards on the board that you built for **Question 6** (the
-project planning question) for every clean-up task you identify. For each
-card include:
-
-- A clear title and a short description.
-- An assignee (a hypothetical junior developer name is fine).
-- A due date.
-- A checklist of the **step-by-step actions** to complete the task.
-- Labels for **priority** and **project**.
-
-### 5. Database and ERD
-
-- Open the provided **`pengindb_erd.sql`** file. This is a database extract
-  that contains the structure of the three tables:
-  - `studentmember`
-  - `tbl_registered_module`
-  - `studentprogrammestatus`
-- Read the `CREATE TABLE` statements and identify the columns, data types,
-  primary keys, foreign keys and constraints.
-- Based on that structure, produce an **Entity-Relationship Diagram (ERD)**
-  that shows the three tables and the relationships between them. Any of
-  the following formats is acceptable:
-  - A PNG or SVG image of the diagram.
-  - A `.drawio` source file (from [diagrams.net](https://app.diagrams.net)).
-  - A Mermaid `erDiagram` block in a `.mmd` or `.md` file.
-  - A `dbdiagram.io` DBML file.
-- Upload the diagram to the `diagrams/` folder of this repository.
-- If any relationships are implied but not explicitly enforced in
-  `pengindb.sql` (for example, a foreign key that is missing), state the
-  assumption clearly in the diagram legend or in this README.
-
-### 6. Share the artefacts
-
-Send the following links to **icts.director@gsu.ac.zw and deputyregistrarhr@gsu.ac.zw**:
-
-1. The URL of your fork of the repository.
-2. The URL of the pull request.
-3. The URL of the updated Trello board.
-
----
 
 ## Refactor plan
 
-> **Candidate — replace this section with your own step-by-step plan.**
+### Phase 0 — Stabilise (week 1)
+1. **Audit** — enumerate every public/private method, its responsibility, its routes and its callers; freeze new features on this module.
+2. **Remove debug artefacts** — delete all `dd()` calls and commented-out dead code; restore the commented-out `try/catch` blocks and route exceptions to `ErrorLogEvent` + a user-safe flash message.
+3. **Fix critical defects first** — (a) group the ungrouped `orWhere` in `generate_html_view()` so the OR branch cannot leak rows outside the programme/session filter; (b) fix the `is-dean` stage assignment bug (`$exam_stage_1` set twice, `$exam_stage_2` never set); (c) wrap all `decrypt()` calls and return 404 on `DecryptException`; (d) resolve the 49.5 pass-mark boundary so a mark equal to the threshold is classified.
 
-Suggested template eg:
+### Phase 1 — Input and authorisation (week 2)
+4. **Form Requests** — replace every `$_GET` read with validated Form Request classes; type-hint `Request` and route parameters.
+5. **ExamStageResolver** — extract the repeated registrar/dean/chairperson stage logic into one injectable class with unit tests.
 
-1. **Audit** — enumerate every public method in the controller and record
-   its responsibility.
+### Phase 2 — Data layer (weeks 3–4)
+6. **Eloquent models, relationships and query scopes** — replace duplicated `DB::table()` joins; eager-load student data; add pagination/chunking; move the pass mark and stage numbers to config/enums.
+7. **ResultsQueryService** — one service owning marks retrieval for screen, PDF and Excel paths.
 
-2. **Documentation** — update PHPDoc blocks and this README as the
-    refactor progresses.
+### Phase 3 — Presentation and export (weeks 5–6)
+8. **Blade extraction** — move all inline HTML/CSS into Blade views; PDF becomes `Pdf::loadView()`.
+9. **Export classes** — dedicated PDF and spreadsheet export classes; stream large exports.
+10. **Split the controller** — thin controllers per concern (filter, present, export), each fronted by tests.
 
----
+### Phase 4 — Codebase generally (ongoing)
+11. **Tests and CI** — feature tests per endpoint before each merge; GitHub Actions running Pint (PSR-12) and PHPUnit; branch protection on `main`.
+12. **Conventions** — naming standards, PHPDoc, PR template, CODEOWNERS, and the same review checklist applied to the other controllers in the application.
+
+Each numbered item above exists as a Trello card (assignee, due date, checklist, priority label) on the Question 6 board.
 
 ## Database — table overview
 
-> **Candidate — expand this with the actual columns from the SQL you add.**
+Relationships are **implied** by the shared `studentNumber` key; the original
+extract declares **no foreign keys** (stated as an assumption in the ERD
+legend and in `pengindb_structure.sql`).
 
-| Table | Purpose |
-|-------|---------|
-| `studentmember` | Master record of every student registered at the University. |
-| `tbl_registered_module` | Modules that a student is registered for in a given session / semester. |
-| `studentprogrammestatus` | The status of the student on their programme (active, deferred, discontinued, completed, etc.). |
+| Table | Purpose | Key columns |
+|-------|---------|-------------|
+| `studentmember` | Master record of every student. Parent entity. | PK `id`; unique `studentNumber`, `applicationNumber`, `nationalId` |
+| `studentprogrammestatus` | Student's status on a programme per year/semester/session (registered, exempted, deferred, graduated). 1 student → many status rows. | PK `id`; FK `studentNumber`; composite unique key across (studentNumber, programmeCode, yearOfStudy, semesterOfStudy, session, recordStatus, format) |
+| `tblregistered_module` | Modules a student is registered for in a session/semester, incl. supplementary flag and exam seating reference. 1 student → many registrations. | PK `id`; FK `studentNumber`; `seatingIdFk` references an exam-seating table not in this extract |
 
-The ER diagram in `diagrams/` must reflect the actual structure declared
-in `pengindb.sql` and show the relationships between these three tables
-(typically `studentmember` 1 &mdash; * `tbl_registered_module` and
-`studentmember` 1 &mdash; * `studentprogrammestatus`).
-
----
-
-## Marking criteria (for panel use)
-
-| Area | Weight |
-|------|--------|
-| Quality of the code review (what is wrong, why it matters) | 6 |
-| Quality of the modularisation plan and Laravel patterns used | 6 |
-| Pull request hygiene (branch, commits, PR description) | 3 |
-| Trello updates (cards, assignments, checklists, due dates) | 4 |
-| Correct interpretation of `db.sql` (keys, types, relationships) | 3 |
-| Entity-Relationship Diagram (clarity, correctness, format) | 3 |
-| **Total** | **25** |
-
----
+**Data-quality observations carried into `pengindb_structure.sql`:** `dateBirth` stored as `varchar(255)` (corrected to `DATE`); `studentNumber` length inconsistent between tables (15 vs 20 — standardised to 20); `tblregistered_module` had no index on `studentNumber` despite being its natural join key (index added).
 
 ## Contact
-
-For any queries about this assessment please contact
-**icts.director@gsu.ac.zw and deputyregistrarhr@gsu.ac.zw**.
+icts.director@gsu.ac.zw and deputyregistrarhr@gsu.ac.zw
